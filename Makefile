@@ -30,7 +30,7 @@ LIBS	  	= -L${CUDA_LIB_PATH} \
 all: eventgen
 
 eventgen: $(OBJ_FILES) ${CU_OBJ_FILES}
-	${CC} ${LDFLAGS} $^ -o $@
+	${CXX} ${LDFLAGS} $^ -o $@
 
 %.o: %.cpp
 	${CXX} ${CFLAGS} ${WARNINGS} ${INCLUDES} -std=${CXX_STD} -c $<

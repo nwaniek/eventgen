@@ -1,5 +1,4 @@
 #include <cuda.h>
-#include <cstdint>
 
 __global__
 void to_grayscale(unsigned char *img, unsigned char *result)
@@ -18,7 +17,7 @@ void to_grayscale(unsigned char *img, unsigned char *result)
 }
 
 __global__
-void dvs_sim(float *x, uint64_t t)
+void dvs_sim(float *x, int i)
 {
 
 }
