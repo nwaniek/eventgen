@@ -20,6 +20,7 @@ typedef struct {
 	uint64_t frame_stop;
 	uint64_t start_t;
 	uint64_t delta_t;
+	bool warn_only;
 } config_t;
 
 
@@ -31,6 +32,7 @@ static const char *usage =
 "  -t T   set the start time\n"
 "  -d D   set the time delta between consecutive frames\n"
 "  -h     show this help\n"
+"  -w     only emit warning if a file is missing. default: exit\n"
 "The output is stored as event data in evdat format.";
 
 
@@ -39,15 +41,19 @@ parse_args(config_t &config, int argc, char *argv[])
 {
 	config.start_t = 0;
 	config.delta_t = 1;
+	config.warn_only = false;
 
 	int opt;
-	while ((opt = getopt(argc, argv, "t:d:h")) != -1) {
+	while ((opt = getopt(argc, argv, "wt:d:h")) != -1) {
 		switch (opt) {
 		case 't':
 			config.start_t = atoi(optarg);
 			break;
 		case 'd':
 			config.delta_t = atoi(optarg);
+			break;
+		case 'w':
+			config.warn_only = true;
 			break;
 		case 'h':
 			return 1;
@@ -75,18 +81,30 @@ parse_args(config_t &config, int argc, char *argv[])
 }
 
 
+/*
+ * test if a file exists. return 0 if the file exists and 1 if not. if warn_only
+ * is set in the config, the function will always return 0.
+ */
 int
-test_file(char *filename)
+test_file(const config_t &config, char *filename)
 {
 	struct stat sb;
 	if (stat(filename, &sb) == -1) {
 		if (errno == ENOENT) {
-			std::cerr << "EE: File '" << filename << "' does not exist." << std::endl;
-			return 1;
+			if (config.warn_only)
+				std::cerr << "WW: File ";
+			else
+				std::cerr << "EE: File ";
+			std::cerr << filename << "' does not exist." << std::endl;
+			return config.warn_only ? 0 : 1;
 		}
 		else {
-			std::cerr << "EE: File '" << filename << "' does not exist." << std::endl;
-			return 1;
+			if (config.warn_only)
+				std::cerr << "WW: File ";
+			else
+				std::cerr << "EE: File ";
+			std::cerr << filename << "' does not exist." << std::endl;
+			return config.warn_only ? 0 : 1;
 		}
 	}
 	return 0;
@@ -125,7 +143,7 @@ generate_file_list(const config_t &config)
 	for (uint64_t i = config.frame_start; i < config.frame_stop; i++) {
 		char buffer[512] = {0};
 		snprintf(buffer, 512, config.file_pattern, i);
-		if (test_file(buffer)) exit(EXIT_FAILURE);
+		if (test_file(config, buffer)) exit(EXIT_FAILURE);
 		files.push_back(string(buffer));
 	}
 	return std::move(files);
