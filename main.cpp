@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <memory>
 #include <boost/lexical_cast.hpp>
 #include "dvs.h"
 
@@ -93,27 +94,8 @@ test_file(char *filename)
 
 
 int
-main(int argc, char *argv[]) {
-
-	using namespace std;
-
-	// read in the configuration
-	config_t config;
-	if (parse_args(config, argc, argv)) {
-		std::cout << usage << std::endl;
-		return EXIT_FAILURE;
-	}
-
-
-	// check if all files exist
-	vector<string> files;
-	for (uint64_t i = config.frame_start; i < config.frame_stop; i++) {
-		char buffer[512] = {0};
-		snprintf(buffer, 512, config.file_pattern, i);
-		if (test_file(buffer)) return EXIT_FAILURE;
-		files.push_back(string(buffer));
-	}
-
+process_files(std::vector<std::string> &files)
+{
 	// pass all the files to the CUDA kernel
 
 	/*
@@ -128,4 +110,40 @@ main(int argc, char *argv[]) {
 	// call_wrapper();
 	return EXIT_SUCCESS;
 	*/
+
+	return EXIT_SUCCESS;
+}
+
+
+std::vector<std::string>
+generate_file_list(const config_t &config)
+{
+	using namespace std;
+
+	// check if all files exist
+	vector<string> files;
+	for (uint64_t i = config.frame_start; i < config.frame_stop; i++) {
+		char buffer[512] = {0};
+		snprintf(buffer, 512, config.file_pattern, i);
+		if (test_file(buffer)) exit(EXIT_FAILURE);
+		files.push_back(string(buffer));
+	}
+	return std::move(files);
+}
+
+
+int
+main(int argc, char *argv[])
+{
+	using namespace std;
+
+	// read in the configuration
+	config_t config;
+	if (parse_args(config, argc, argv)) {
+		std::cout << usage << std::endl;
+		return EXIT_FAILURE;
+	}
+
+	auto files = generate_file_list(config);
+	return process_files(files);
 }
