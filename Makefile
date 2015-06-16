@@ -14,7 +14,8 @@ CU_OBJ_FILES 	= $(CU_SRC:.cu=.o)
 
 SRC		= main.cpp
 
-CU_SRC 		= kernels/dvs.cu
+CU_SRC 		= kernels/dvs.cu \
+		  kernels/frame.cu
 
 INCLUDES  	= -I. \
 		  -Ikernels \

@@ -129,6 +129,8 @@ main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
+	// generate list of files (and check if all files are available) and run
+	// the CUDA kernel on pairs of images.
 	auto files = generate_file_list(config);
 	return process_files(config, files);
 }
