@@ -1,7 +1,11 @@
 #ifndef __DVS_H__B0AC2419_E92A_41B5_9536_F492EE70067A
 #define __DVS_H__B0AC2419_E92A_41B5_9536_F492EE70067A
 
-void call_wrapper();
+#include <vector>
+#include <string>
+#include "common.h"
+
+int process_files(config_t &config, std::vector<std::string> &files);
 
 #endif /* __DVS_H__B0AC2419_E92A_41B5_9536_F492EE70067A */
 
