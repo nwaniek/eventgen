@@ -13,6 +13,7 @@ struct Frame
 {
 	~Frame();
 	int load_from_file(std::string filename);
+	void toGPU();
 
 	std::string filename;
 	int x, y, n;
@@ -20,6 +21,7 @@ struct Frame
 	unsigned char *data = nullptr;
 	unsigned char *dev_data = nullptr;
 };
+
 
 
 #endif /* __FRAME_H__65F2E4AA_A035_45CC_8E39_827B1621E122 */

@@ -20,8 +20,13 @@ Frame::load_from_file(std::string filename)
 	}
 
 	cudaMalloc((void**)&dev_data, memsize);
-	cudaMemcpy(dev_data, data, memsize, cudaMemcpyHostToDevice);
 	return 0;
+}
+
+void
+Frame::toGPU()
+{
+	cudaMemcpy(dev_data, data, memsize, cudaMemcpyHostToDevice);
 }
 
 Frame::

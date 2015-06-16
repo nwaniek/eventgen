@@ -11,6 +11,7 @@ typedef struct {
 	uint64_t frame_stop;
 	uint64_t start_t;
 	uint64_t delta_t;
+	int thresh;
 	bool warn_only;
 } config_t;
 

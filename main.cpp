@@ -19,7 +19,8 @@ static const char *usage =
 "  start         start index to be used in file-pattern.\n"
 "  stop          stop index to be used in file-pattern.\n"
 "Options: \n"
-"  -t T          set the start time\n"
+"  -t time       set the start time\n"
+"  -T threshold  set the pixel-threshod. default = 10\n"
 "  -d D          set the time delta between consecutive frames\n"
 "  -h            show this help\n"
 "  -w            only emit warning if a file is missing. default: exit\n"
@@ -35,19 +36,26 @@ parse_args(config_t &config, int argc, char *argv[])
 	config.start_t = 0;
 	config.delta_t = 1;
 	config.warn_only = false;
+	config.thresh = 10;
 
 	int opt;
-	while ((opt = getopt(argc, argv, "wt:d:h")) != -1) {
+	while ((opt = getopt(argc, argv, "cwtT::d:h")) != -1) {
 		switch (opt) {
+		case 'c':
+			print_cuda_info();
+			exit(EXIT_SUCCESS);
+			break;
 		case 't':
-			config.start_t = atoi(optarg);
+			config.start_t = boost::lexical_cast<uint64_t>(optarg);
 			break;
 		case 'd':
-			config.delta_t = atoi(optarg);
+			config.delta_t = boost::lexical_cast<uint64_t>(optarg);
 			break;
 		case 'w':
 			config.warn_only = true;
 			break;
+		case 'T':
+			config.thresh = boost::lexical_cast<int>(optarg);
 		case 'h':
 			return 1;
 		default:
