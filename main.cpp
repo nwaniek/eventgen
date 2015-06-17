@@ -7,17 +7,19 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <memory>
+#include <fstream>
 #include <boost/lexical_cast.hpp>
 #include "dvs.h"
 #include "common.h"
 
 
 static const char *usage =
-"Usage: eventgen [options] file-pattern start stop\n"
+"Usage: eventgen [options] file-pattern start stop file-name\n"
 "Positional Arguments:\n"
 "  file-pattern  pattern to search files for, e.g. '/path/%05d.png'\n"
 "  start         start index to be used in file-pattern.\n"
 "  stop          stop index to be used in file-pattern.\n"
+"  file-name     filename to write result to\n"
 "Options: \n"
 "  -t time       set the start time\n"
 "  -T threshold  set the pixel-threshod. default = 10\n"
@@ -64,7 +66,7 @@ parse_args(config_t &config, int argc, char *argv[])
 	}
 
 	// check if we got enough arguments
-	if ((argc - optind) < 3) {
+	if ((argc - optind) < 4) {
 		std::cerr << "EE: insufficient arguments" << std::endl;
 		return 1;
 	}
@@ -78,6 +80,7 @@ parse_args(config_t &config, int argc, char *argv[])
 		std::cerr << "EE: start/stop need to be in integer format" << std::endl;
 		return 1;
 	}
+	config.file_target = argv[optind + 3];
 
 	if (config.frame_start >= config.frame_stop) {
 		std::cerr << "EE: start index > stop index" << std::endl;
@@ -125,6 +128,58 @@ generate_file_list(const config_t &config)
 }
 
 
+
+inline void
+write_bigendian(std::ofstream &f, uint32_t i)
+{
+	uint8_t buf[4];
+	buf[0] = (i & 0xff000000) >> 24;
+	buf[1] = (i & 0x00ff0000) >> 16;
+	buf[2] = (i & 0x0000ff00) >> 8;
+	buf[3] = (i & 0x000000ff);
+	f.write((char*)&buf, sizeof(buf));
+}
+
+
+void
+saveaerdat(std::string filename, std::vector<dvs_event_t> &events)
+{
+	using namespace std;
+
+	ofstream f;
+	f.open(filename, std::ios_base::out | std::ios_base::binary);
+
+	const char header[] =
+		"#!AER-DAT2.0\r\n"
+		"# This is a raw AE data file created by saveaerdat.m\r\n"
+		"# Data format is int32 address, int32 timestamp (8 bytes total), repeated for each event\r\n"
+		"# Timestamps tick is 1 us\r\n";
+
+	f.write(header, strlen(header));
+	for (auto &e: events) {
+		// TODO: check if the computation is correct
+		uint32_t addr = (2 << 21) * e.y + (240-1-e.x) * (2 << 11) + (1-e.polarity) * (2 << 10);
+		uint32_t t = (uint32_t)e.t;
+		write_bigendian(f, addr);
+		write_bigendian(f, t);
+	}
+	f.close();
+}
+
+void
+saveaerplain(std::string filename, std::vector<dvs_event_t> &events)
+{
+	using namespace std;
+
+	ofstream f;
+	f.open(filename, std::ios_base::out);
+
+	for (auto &e: events)
+		f << (int)e.t << " " << (int)e.polarity << " " << (int)e.x << " " << (int)e.y << std::endl;
+	f.close();
+}
+
+
 int
 main(int argc, char *argv[])
 {
@@ -140,5 +195,8 @@ main(int argc, char *argv[])
 	// generate list of files (and check if all files are available) and run
 	// the CUDA kernel on pairs of images.
 	auto files = generate_file_list(config);
-	return process_files(config, files);
+	vector<dvs_event_t> events = process_files(config, files);
+	// saveaerdat(config.file_target, events);
+	saveaerplain(config.file_target, events);
+	return EXIT_SUCCESS;
 }

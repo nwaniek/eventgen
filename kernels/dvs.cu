@@ -5,17 +5,14 @@
 #include "frame.h"
 
 
-struct dvs_event_t {
-	uint8_t polarity;
-	uint16_t x, y;
-	uint64_t t;
-};
-
-
+/*
+ * struct EventBuffer - store a certain amount of events in the form of a buffer
+ */
 struct EventBuffer {
 	int counter;
 	dvs_event_t events[];
 };
+
 
 
 __global__
@@ -62,7 +59,7 @@ print_cuda_info()
 }
 
 
-int
+std::vector<dvs_event_t>
 process_files(config_t &config, std::vector<std::string> &files)
 {
 	Frame *left = new Frame();
@@ -82,6 +79,9 @@ process_files(config_t &config, std::vector<std::string> &files)
 	cudaMalloc((void**)&dev_buf_a, bufsize);
 	cudaMalloc((void**)&dev_buf_b, bufsize);
 
+	// storage for the result
+	std::vector<dvs_event_t> result;
+
 	int64_t t = config.start_t;
 	for (size_t i = 1; i < files.size(); i++) {
 		Frame *right = new Frame();
@@ -95,14 +95,12 @@ process_files(config_t &config, std::vector<std::string> &files)
 		// call the CUDA kernel
 		dim3 threadsPerBlock(32, 8);
 		dim3 numBlocks(left->x / threadsPerBlock.x, left->y / threadsPerBlock.y);
-		dvs_sim<<<numBlocks, threadsPerBlock>>>(left->x, left->y, left->dev_data, right->dev_data, config.thresh, dev_buf_a, t);
+		dvs_sim<<<numBlocks, threadsPerBlock>>>(left->x, left->y, left->dev_data, right->dev_data,
+				config.thresh, dev_buf_a, t);
 
-		// emit the events from the previous frame while the kernel computes
-		for (int i = 0; i < buf_b->counter; i++) {
-			std::cout << buf_b->events[i].t << " "
-				  << buf_b->events[i].x << " "
-				  << buf_b->events[i].y << std::endl;
-		};
+		// copy the events to the result vector
+		for (int i = 0; i < buf_b->counter; i++)
+			result.push_back(buf_b->events[i]);
 
 		// reset the event buffer counter
 		buf_b->counter = 0;
@@ -121,5 +119,5 @@ process_files(config_t &config, std::vector<std::string> &files)
 	free(buf_b);
 	free(buf_a);
 
-	return EXIT_SUCCESS;
+	return std::move(result);
 }
