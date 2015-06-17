@@ -14,7 +14,6 @@ struct EventBuffer {
 };
 
 
-
 __global__
 void dvs_sim(
 	int width, int height,

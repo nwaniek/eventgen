@@ -141,7 +141,6 @@ generate_file_list(const config_t &config)
 }
 
 
-
 inline void
 write_bigendian(std::ofstream &f, uint32_t i)
 {
