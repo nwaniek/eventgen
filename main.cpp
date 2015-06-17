@@ -26,6 +26,7 @@ static const char *usage =
 "  -d D          set the time delta between consecutive frames\n"
 "  -h            show this help\n"
 "  -w            only emit warning if a file is missing. default: exit\n"
+"  -f format     output format. one of 'aedat', 'plain'. default: aedat\n"
 "The output is stored as event data in evdat format.";
 
 
@@ -39,9 +40,10 @@ parse_args(config_t &config, int argc, char *argv[])
 	config.delta_t = 1;
 	config.warn_only = false;
 	config.thresh = 10;
+	config.oformat = AEDAT;
 
 	int opt;
-	while ((opt = getopt(argc, argv, "cwtT::d:h")) != -1) {
+	while ((opt = getopt(argc, argv, "cwtT::d:hf:")) != -1) {
 		switch (opt) {
 		case 'c':
 			print_cuda_info();
@@ -58,6 +60,17 @@ parse_args(config_t &config, int argc, char *argv[])
 			break;
 		case 'T':
 			config.thresh = boost::lexical_cast<int>(optarg);
+			break;
+		case 'f':
+			if (!strcmp(optarg, "plain"))
+				config.oformat = PLAIN;
+			else if (!strcmp(optarg, "aedat"))
+				config.oformat = AEDAT;
+			else {
+				std::cerr << "EE: unknown output format '" << optarg << "'." << std::endl;
+				return 1;
+			}
+			break;
 		case 'h':
 			return 1;
 		default:
@@ -196,7 +209,14 @@ main(int argc, char *argv[])
 	// the CUDA kernel on pairs of images.
 	auto files = generate_file_list(config);
 	vector<dvs_event_t> events = process_files(config, files);
-	// saveaerdat(config.file_target, events);
-	saveaerplain(config.file_target, events);
+
+	switch (config.oformat) {
+	case AEDAT:
+		saveaerdat(config.file_target, events);
+		break;
+	case PLAIN:
+		saveaerplain(config.file_target, events);
+		break;
+	}
 	return EXIT_SUCCESS;
 }
