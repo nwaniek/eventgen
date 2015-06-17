@@ -179,6 +179,7 @@ saveaerdat(std::string filename, std::vector<dvs_event_t> &events)
 	f.close();
 }
 
+
 void
 saveaerplain(std::string filename, std::vector<dvs_event_t> &events)
 {
