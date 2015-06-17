@@ -100,7 +100,8 @@ process_files(config_t &config, std::vector<std::string> &files)
 
 		// copy the events to the result vector
 		for (int i = 0; i < buf_b->counter; i++)
-			result.push_back(buf_b->events[i]);
+			result.push_back({buf_b->events[i].polarity, buf_b->events[i].x,
+					buf_b->events[i].y, buf_b->events[i].t});
 
 		// reset the event buffer counter
 		buf_b->counter = 0;
