@@ -1,2 +1,6 @@
 *.o
 eventgen
+demo.sh
+*.aedat
+*.dvsdat
+*.plain

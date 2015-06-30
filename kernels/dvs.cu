@@ -13,6 +13,11 @@ struct EventBuffer {
 	dvs_event_t events[];
 };
 
+static size_t get_event_buffer_size(int N)
+{
+	return sizeof(int) + N * sizeof(dvs_event_t);
+}
+
 
 __global__
 void dvs_sim(
@@ -28,15 +33,18 @@ void dvs_sim(
 	if (x >= width || y >= height) return;
 	int idx = y * width + x;
 
-	// int diff = (int)left[pxl] - (int)right[pxl];
 	int diff = (int)left[idx] - (int)right[idx];
+
+	// __syncthreads();
 
 	// on-event
 	if (diff > thresh)
-		buffer->events[atomicAdd(&buffer->counter, 1)] = {1u, (uint16_t)x, (uint16_t)y, t};
+		buffer->events[atomicAdd(&buffer->counter, 1)] =
+			{1u, (uint16_t)x, (uint16_t)(height - y), t};
 	// off-event
 	else if (diff < -thresh)
-		buffer->events[atomicAdd(&buffer->counter, 1)] = {0u, (uint16_t)x, (uint16_t)y, t};
+		buffer->events[atomicAdd(&buffer->counter, 1)] =
+			{0u, (uint16_t)x, (uint16_t)(height - y), t};
 }
 
 
@@ -67,7 +75,7 @@ process_files(config_t &config, std::vector<std::string> &files)
 	int N = left->x * left->y;
 
 	// allocate memory to store the events both on host and device
-	size_t bufsize = sizeof(int) + N * sizeof(dvs_event_t);
+	size_t bufsize = get_event_buffer_size(N);
 	EventBuffer *buf_a = (EventBuffer*)malloc(bufsize);
 	EventBuffer *buf_b = (EventBuffer*)malloc(bufsize);
 	memset(buf_a, 0, bufsize);
@@ -86,7 +94,7 @@ process_files(config_t &config, std::vector<std::string> &files)
 		Frame *right = new Frame();
 		right->load_from_file(files[i]);
 
-		// synchronization point: load data to/from GPU
+		// synchronization point: load data to/from GPU. blocking calls
 		right->toGPU();
 		cudaMemcpy(dev_buf_a, buf_a, bufsize, cudaMemcpyHostToDevice);
 		cudaMemcpy(buf_b, dev_buf_b, bufsize, cudaMemcpyDeviceToHost);
@@ -94,16 +102,21 @@ process_files(config_t &config, std::vector<std::string> &files)
 		// call the CUDA kernel
 		dim3 threadsPerBlock(32, 8);
 		dim3 numBlocks(left->x / threadsPerBlock.x, left->y / threadsPerBlock.y);
-		dvs_sim<<<numBlocks, threadsPerBlock>>>(left->x, left->y, left->dev_data, right->dev_data,
+		dvs_sim<<<numBlocks, threadsPerBlock>>>(
+				left->x, left->y,
+				left->dev_data, right->dev_data,
 				config.thresh, dev_buf_a, t);
 
 		// copy the events to the result vector
 		for (int i = 0; i < buf_b->counter; i++)
-			result.push_back({buf_b->events[i].polarity, buf_b->events[i].x,
-					buf_b->events[i].y, buf_b->events[i].t});
+			result.push_back({
+					buf_b->events[i].polarity,
+					buf_b->events[i].x,
+					buf_b->events[i].y,
+					buf_b->events[i].t});
 
 		// reset the event buffer counter
-		buf_b->counter = 0;
+		memset(buf_b, 0, bufsize);
 
 		// wait for the device to finish
 		cudaDeviceSynchronize();
@@ -113,9 +126,15 @@ process_files(config_t &config, std::vector<std::string> &files)
 		std::swap(buf_a, buf_b);
 		std::swap(left, right);
 
+		// remove "right" (which is the old left) as we don't need it
+		// anymore
+		delete right;
 		t += config.delta_t;
 	}
 
+	delete left;
+	cudaFree(dev_buf_b);
+	cudaFree(dev_buf_a);
 	free(buf_b);
 	free(buf_a);
 

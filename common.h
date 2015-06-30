@@ -4,7 +4,8 @@
 
 typedef enum {
 	AEDAT = 0,
-	PLAIN = 1
+	PLAIN = 1,
+	EDVSTOOLS = 2
 } output_format_t;
 
 
@@ -25,7 +26,7 @@ typedef struct {
 
 
 /*
- * struct dvs_event_t - event representation.
+ * struct dvs_event_t - event representation. huge integers required due to CUDA
  */
 typedef struct {
 	uint8_t polarity;

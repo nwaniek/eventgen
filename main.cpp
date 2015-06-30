@@ -3,14 +3,11 @@
 #include <iostream>
 #include <vector>
 #include <string>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <memory>
-#include <fstream>
+#include <algorithm>
 #include <boost/lexical_cast.hpp>
 #include "dvs.h"
 #include "common.h"
+#include "io.hpp"
 
 
 static const char *usage =
@@ -26,7 +23,7 @@ static const char *usage =
 "  -d D          set the time delta between consecutive frames\n"
 "  -h            show this help\n"
 "  -w            only emit warning if a file is missing. default: exit\n"
-"  -f format     output format. one of 'aedat', 'plain'. default: aedat\n"
+"  -f format     output format. one of 'aedat', 'plain', 'edvstools'. default: aedat\n"
 "The output is stored as event data in evdat format.";
 
 
@@ -66,6 +63,8 @@ parse_args(config_t &config, int argc, char *argv[])
 				config.oformat = PLAIN;
 			else if (!strcmp(optarg, "aedat"))
 				config.oformat = AEDAT;
+			else if (!strcmp(optarg, "edvstools"))
+				config.oformat = EDVSTOOLS;
 			else {
 				std::cerr << "EE: unknown output format '" << optarg << "'." << std::endl;
 				return 1;
@@ -104,95 +103,6 @@ parse_args(config_t &config, int argc, char *argv[])
 }
 
 
-/*
- * test_file - see if a file exists. returns 0 if the file exists and 1 if not.
- */
-int
-test_file(char *filename)
-{
-	struct stat sb;
-	if (stat(filename, &sb) == -1)
-		return 1;
-	return 0;
-}
-
-
-std::vector<std::string>
-generate_file_list(const config_t &config)
-{
-	using namespace std;
-
-	// check if all files exist
-	vector<string> files;
-	for (uint64_t i = config.frame_start; i < config.frame_stop; i++) {
-		char buffer[512] = {0};
-		snprintf(buffer, 512, config.file_pattern, i);
-		if (test_file(buffer)) {
-			if (config.warn_only)
-				std::cerr << "WW: File '" << buffer << "' does not exist or is unavailable." << std::endl;
-			else {
-				std::cerr << "EE: File '" << buffer << "' does not exist or is unavailable." << std::endl;
-				exit(EXIT_FAILURE);
-			}
-		}
-		files.push_back(string(buffer));
-	}
-	return std::move(files);
-}
-
-
-inline void
-write_bigendian(std::ofstream &f, uint32_t i)
-{
-	uint8_t buf[4];
-	buf[0] = (i & 0xff000000) >> 24;
-	buf[1] = (i & 0x00ff0000) >> 16;
-	buf[2] = (i & 0x0000ff00) >> 8;
-	buf[3] = (i & 0x000000ff);
-	f.write((char*)&buf, sizeof(buf));
-}
-
-
-void
-saveaerdat(std::string filename, std::vector<dvs_event_t> &events)
-{
-	using namespace std;
-
-	ofstream f;
-	f.open(filename, std::ios_base::out | std::ios_base::binary);
-
-	const char header[] =
-		"#!AER-DAT2.0\r\n"
-		"# This is a raw AE data file created by saveaerdat.m\r\n"
-		"# Data format is int32 address, int32 timestamp (8 bytes total), repeated for each event\r\n"
-		"# Timestamps tick is 1 us\r\n";
-
-	f.write(header, strlen(header));
-	for (auto &e: events) {
-		// TODO: check if the computation is correct
-		uint32_t addr = (2 << 21) * e.y + (240-1-e.x) * (2 << 11) + (1-e.polarity) * (2 << 10);
-		uint32_t t = (uint32_t)e.t;
-		write_bigendian(f, addr);
-		write_bigendian(f, t);
-	}
-	f.close();
-}
-
-
-void
-saveaerplain(std::string filename, std::vector<dvs_event_t> &events)
-{
-	using namespace std;
-
-	ofstream f;
-	f.open(filename, std::ios_base::out);
-
-	for (auto &e: events)
-		f << (int)e.t << " " << (int)e.polarity << " " << (int)e.x << " " << (int)e.y << std::endl;
-	f.close();
-}
-
-
 int
 main(int argc, char *argv[])
 {
@@ -209,6 +119,9 @@ main(int argc, char *argv[])
 	// the CUDA kernel on pairs of images.
 	auto files = generate_file_list(config);
 	vector<dvs_event_t> events = process_files(config, files);
+	std::sort(events.begin(), events.end(), [](dvs_event_t &a, dvs_event_t &b) {
+				return a.t < b.t;
+			});
 
 	switch (config.oformat) {
 	case AEDAT:
@@ -216,6 +129,9 @@ main(int argc, char *argv[])
 		break;
 	case PLAIN:
 		saveaerplain(config.file_target, events);
+		break;
+	case EDVSTOOLS:
+		saveedvstools(config.file_target, events);
 		break;
 	}
 	return EXIT_SUCCESS;

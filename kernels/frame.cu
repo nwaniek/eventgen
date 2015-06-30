@@ -19,15 +19,26 @@ Frame::load_from_file(std::string filename)
 		return 1;
 	}
 
-	cudaMalloc((void**)&dev_data, memsize);
+	// std::cout << "II: Frame (" << x << ", " << y << ")" << std::endl;
+
+	cudaError_t errcode = cudaMalloc((void**)&dev_data, memsize);
+	if (errcode != cudaSuccess) {
+		std::cerr << "EE: Could not allocate CUDA Device memory for Frame" << std::endl;
+		return 1;
+	}
 	return 0;
 }
+
 
 void
 Frame::toGPU()
 {
-	cudaMemcpy(dev_data, data, memsize, cudaMemcpyHostToDevice);
+	cudaError_t errcode = cudaMemcpy(dev_data, data, memsize, cudaMemcpyHostToDevice);
+	if (errcode != cudaSuccess) {
+		std::cerr << "EE: Error while transfering frame data to CUDA Device" << std::endl;
+	}
 }
+
 
 Frame::
 ~Frame() {

@@ -12,7 +12,8 @@ OBJ_FILES   	= $(SRC:.cpp=.o)
 CU_OBJ_FILES 	= $(CU_SRC:.cu=.o)
 
 
-SRC		= main.cpp
+SRC		= main.cpp \
+		  io.cpp
 
 CU_SRC 		= kernels/dvs.cu \
 		  kernels/frame.cu
@@ -32,6 +33,9 @@ all: eventgen
 
 eventgen: $(OBJ_FILES) ${CU_OBJ_FILES}
 	${CXX} ${LDFLAGS} $^ -o $@
+
+io.o: io.cpp io.hpp
+	${CXX} ${CFLAGS} ${WARNINGS} ${INCLUDES} -std=${CXX_STD} -c io.cpp
 
 %.o: %.cpp
 	${CXX} ${CFLAGS} ${WARNINGS} ${INCLUDES} -std=${CXX_STD} -c $<
