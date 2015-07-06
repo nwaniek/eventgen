@@ -16,7 +16,8 @@ SRC		= main.cpp \
 		  io.cpp
 
 CU_SRC 		= kernels/dvs.cu \
-		  kernels/frame.cu
+		  kernels/frame.cu \
+		  kernels/misc.cu
 
 INCLUDES  	= -I. \
 		  -Ikernels \

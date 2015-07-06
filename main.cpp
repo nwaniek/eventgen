@@ -5,7 +5,8 @@
 #include <string>
 #include <algorithm>
 #include <boost/lexical_cast.hpp>
-#include "dvs.h"
+#include "kernels/dvs.h"
+#include "kernels/misc.h"
 #include "common.h"
 #include "io.hpp"
 
@@ -107,6 +108,7 @@ int
 main(int argc, char *argv[])
 {
 	using namespace std;
+	initCuda();
 
 	// read in the configuration
 	config_t config;
