@@ -40,7 +40,7 @@ parse_args(config_t &config, int argc, char *argv[])
 	config.oformat = AEDAT;
 
 	int opt;
-	while ((opt = getopt(argc, argv, "cwt:T::d:hf:")) != -1) {
+	while ((opt = getopt(argc, argv, "cwt:T:d:hf:")) != -1) {
 		switch (opt) {
 		case 'c':
 			print_cuda_info();
