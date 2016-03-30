@@ -81,7 +81,7 @@ saveaerdat(std::string filename, std::vector<dvs_event_t> &events)
 
 	const char header[] =
 		"#!AER-DAT2.0\r\n"
-		"# This is a raw AE data file created by saveaerdat.m\r\n"
+		"# This is a raw AE data file created by eventgen (https://github.com/rochus/eventgen)\r\n"
 		"# Data format is int32 address, int32 timestamp (8 bytes total), repeated for each event\r\n"
 		"# Timestamps tick is 1 us\r\n";
 
